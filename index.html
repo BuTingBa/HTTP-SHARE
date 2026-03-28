@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>HTTP SHARE - 极简文件共享</title>
+    <style>
+        :root {
+            --text-primary: #1d1d1f;
+            --text-secondary: #86868b;
+            --accent-color: #0066cc;
+            --border-color: rgba(0, 0, 0, 0.06);
+            --hover-bg: rgba(0, 0, 0, 0.03);
+            --nav-height: 64px;
+        }
+        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; margin: 0; padding: 0; }
+
+        /* 环境光渐变背景 */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            background-color: #f5f5f7;
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex; flex-direction: column;
+            position: relative;
+            overflow-x: hidden;
+        }
+        body::before {
+            content: ''; position: fixed; top: -20%; left: -10%; width: 120%; height: 120%;
+            background: radial-gradient(circle at 20% 30%, rgba(0, 102, 204, 0.06) 0%, transparent 40%),
+                        radial-gradient(circle at 80% 70%, rgba(44, 153, 255, 0.04) 0%, transparent 50%);
+            z-index: -1; pointer-events: none;
+        }
+
+        /* 顶部导航栏 */
+        .navbar {
+            position: sticky; top: 0; z-index: 100; height: var(--nav-height);
+            background: rgba(255, 255, 255, 0.72);
+            backdrop-filter: blur(40px) saturate(200%);
+            -webkit-backdrop-filter: blur(40px) saturate(200%);
+            border-bottom: 1px solid var(--border-color);
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 1px 0 rgba(0,0,0,0.02);
+        }
+        .navbar img.logo { height: 28px; width: auto; object-fit: contain; }
+
+        /* 主体内容区 */
+        .main-content {
+            flex: 1; display: flex; justify-content: center;
+            padding: 40px 20px 80px 20px;
+        }
+        .container { width: 100%; max-width: 900px; align-self: flex-start; }
+
+        /* 毛玻璃面板 */
+        .panel {
+            background: rgba(255, 255, 255, 0.65);
+            backdrop-filter: blur(40px) saturate(200%);
+            -webkit-backdrop-filter: blur(40px) saturate(200%);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            overflow: hidden;
+        }
+
+        /* 头部面包屑 */
+        .header { padding: 20px 28px; border-bottom: 1px solid var(--border-color); }
+        .breadcrumb { font-size: 15px; font-weight: 500; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .breadcrumb a { color: var(--text-primary); text-decoration: none; transition: color 0.2s; }
+        .breadcrumb a:hover { color: var(--accent-color); }
+        .breadcrumb span.separator { color: var(--text-secondary); font-weight: 300; }
+
+        /* 列表系统 */
+        .file-list { list-style: none; padding: 12px; margin: 0; }
+        .file-item {
+            display: flex; align-items: center; padding: 14px 16px; border-radius: 12px;
+            text-decoration: none; color: var(--text-primary); transition: all 0.2s ease;
+        }
+        .file-item:hover { background-color: var(--hover-bg); transform: translateY(-1px); }
+        .icon { width: 32px; height: 32px; margin-right: 18px; flex-shrink: 0; }
+        .icon-folder { color: #8bb9ed; } /* 素雅蓝 */
+        .icon-file { color: #a1a1a6; } /* 冷感灰 */
+        .icon-back { color: var(--text-secondary); }
+
+        .file-info { flex-grow: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+        .file-name { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: 0.2px; }
+        .file-meta { font-size: 13px; color: var(--text-secondary); display: flex; gap: 14px; font-weight: 400; }
+
+        /* 按钮与交互 */
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 14px 32px; background-color: var(--accent-color); color: white;
+            border-radius: 24px; text-decoration: none; font-size: 15px; font-weight: 500;
+            border: none; cursor: pointer; transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+            box-shadow: 0 4px 12px rgba(0, 102, 204, 0.2);
+        }
+        .btn:hover { background-color: #005bb5; box-shadow: 0 6px 16px rgba(0, 102, 204, 0.3); transform: translateY(-1px); }
+        .btn:active { transform: scale(0.97); }
+
+        /* 登录模块 */
+        .login-box { padding: 80px 40px; text-align: center; }
+        .login-box h2 { margin: 0 0 12px 0; font-size: 26px; font-weight: 600; letter-spacing: -0.5px; }
+        .login-box p { color: var(--text-secondary); margin-bottom: 36px; font-size: 15px; }
+        .input-group { margin-bottom: 24px; }
+        .input-group input {
+            width: 100%; max-width: 320px; padding: 16px 20px;
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid var(--border-color); border-radius: 14px;
+            font-size: 16px; outline: none; transition: all 0.2s;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .input-group input:focus { background: #fff; border-color: var(--accent-color); box-shadow: 0 0 0 4px rgba(0,102,204,0.15); }
+        .error-msg { color: #ff3b30; font-size: 14px; margin-top: 16px; font-weight: 500; }
+
+        /* 单文件视图 */
+        .file-view { padding: 100px 24px; text-align: center; }
+        .file-view .icon { width: 80px; height: 80px; margin: 0 auto 24px auto; color: var(--text-primary); opacity: 0.8; }
+
+        /* 底部版权 */
+        .footer {
+            padding: 30px 20px; text-align: center;
+            font-size: 13px; color: var(--text-secondary);
+            border-top: 1px solid rgba(0,0,0,0.04);
+            background: transparent;
+        }
+        .footer div{
+            margin-bottom: 10px;
+        }
+        .footer a{
+            color: #555;
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .main-content { padding: 20px 16px 40px 16px; }
+            .panel { border-radius: 16px; }
+            .icon { width: 28px; height: 28px; margin-right: 14px; }
+            .file-name { font-size: 14px; }
+            .file-meta { font-size: 12px; }
+            .header { padding: 16px 20px; }
+            .btn { width: 100%; max-width: 320px; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar"><img src="/logo.png" alt="Logo" class="logo"></nav>
+
+    <main class="main-content">
+        <div class="container">
+            <div class="panel">
+                {{if .NeedsLogin}}
+                <div class="login-box">
+                    <h2>私人共享</h2>
+                    <p>请输入凭证以解锁访问权限</p>
+                    <form method="POST" action="/login">
+                        <div class="input-group">
+                            <input type="password" name="password" placeholder="输入访问密码" required autofocus>
+                        </div>
+                        <button type="submit" class="btn">验证并进入</button>
+                        {{if .LoginError}}<div class="error-msg">凭证无效，请重试</div>{{end}}
+                    </form>
+                </div>
+                {{else}}
+                    {{if .IsFile}}
+                    <div class="file-view">
+                        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                        <h3 style="margin:0 0 10px 0; font-weight:600; font-size:20px; word-break: break-all;">{{.FileName}}</h3>
+                        <p style="margin: 0 0 40px 0; color: var(--text-secondary); font-size: 15px;">{{.Size}}</p>
+                        <a href="/?download=1" class="btn">立即下载</a>
+                    </div>
+                    {{else}}
+                    <div class="header">
+                        <div class="breadcrumb">
+                            <a href="/">根目录</a>
+                            {{range .Breadcrumbs}}
+                            <span class="separator">/</span><a href="{{.Path}}">{{.Name}}</a>
+                            {{end}}
+                        </div>
+                    </div>
+                    <ul class="file-list">
+                        {{if ne .CurrentPath "/"}}
+                        <li>
+                            <a href="{{.ParentPath}}" class="file-item">
+                                <svg class="icon icon-back" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"></path></svg>
+                                <div class="file-info"><span class="file-name">返回上一层</span></div>
+                            </a>
+                        </li>
+                        {{end}}
+
+                        {{range .Files}}
+                        <li>
+                            <a href="{{.URL}}" class="file-item" {{if not .IsDir}}download{{end}}>
+                                {{if .IsDir}}
+                                <svg class="icon icon-folder" fill="currentColor" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"></path></svg>
+                                {{else}}
+                                <svg class="icon icon-file" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                {{end}}
+                                <div class="file-info">
+                                    <span class="file-name">{{.Name}}</span>
+                                    <span class="file-meta">{{if not .IsDir}}<span>{{.Size}}</span>{{end}}<span>{{.ModTime}}</span></span>
+                                </div>
+                            </a>
+                        </li>
+                        {{end}}
+                    </ul>
+                    {{end}}
+                {{end}}
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div><a href="https://buting.cc" target="_blank">Blog.</a> | <a href="https://github.com/BuTingBa/HTTP-SHARE" target="_blank">Github.</a></div>
+        <div>&copy; 2026 HTTP SHARE. All rights reserved.</div>
+    </footer>
+</body>
+</html>
