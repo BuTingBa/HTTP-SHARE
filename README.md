@@ -19,24 +19,24 @@ hs -i 要共享的文件或者文件夹路径
 
 ```
 
-> 具体参数:
-> hs [命令] [参数]
+> 具体参数:  
+> hs [命令] [参数]  
+>  
+> 主命令 (直接启动服务):  
+> hs -i <路径> [-p 端口] [-pass 密码] [-m 模式] [-h 域名]  
+> -i string    输入文件或目录路径 (必须项或默认当前目录)  
+> -p string    指定服务端口 (默认 1120)  
+> -pass string 开启密码保护  
+> -m string    网络模式优先渲染二维码: lan, ipv6, custom (默认 lan)  
+> -h string    自定义外网 IP 或域名 (用于 custom 模式)  
+>  
+> 配置命令 (持久化修改默认设置):  
+> hs config [参数]  
+> hs config -p 8080 -pass 123456 -m ipv6 -h share.com  
 >
-> 主命令 (直接启动服务):
-> hs -i <路径> [-p 端口] [-pass 密码] [-m 模式] [-h 域名]
-> -i string    输入文件或目录路径 (必须项或默认当前目录)
-> -p string    指定服务端口 (默认 1120)
-> -pass string 开启密码保护
-> -m string    网络模式优先渲染二维码: lan, ipv6, custom (默认 lan)
-> -h string    自定义外网 IP 或域名 (用于 custom 模式)
-
-配置命令 (持久化修改默认设置):
-hs config [参数]
-hs config -p 8080 -pass 123456 -m ipv6 -h share.com
-
-其他命令:
-hs help        显示此帮助信息
-hs v        显示版本信息
+> 其他命令:  
+> hs help        显示此帮助信息  
+> hs v        显示版本信息  
 
 
 ## Windows上使用菜单
